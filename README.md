@@ -40,6 +40,14 @@ Lightweight Document Edge Detection — real-time corner detection in the browse
 <img alt="tag-mobile" src="https://img.shields.io/badge/Tag-Mobile--first-111827" />
 <img alt="tag-privacy" src="https://img.shields.io/badge/Tag-Privacy--preserving-111827" />
 
+<br/>
+<br/>
+
+<!-- Demo Link -->
+<a href="https://lded.demo.ateso.ch/" target="_blank">
+  <img src="https://img.shields.io/badge/🚀_Try_Demo-lded.demo.ateso.ch-8B5CF6?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxjaXJjbGUgY3g9IjEyIiBjeT0iMTIiIHI9IjEwIi8+PHBvbHlnb24gcG9pbnRzPSIxMCA4IDE2IDEyIDEwIDE2IDEwIDgiLz48L3N2Zz4=" alt="Demo" />
+</a>
+
 </div>
 
 ---
