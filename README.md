@@ -54,7 +54,11 @@ Lightweight Document Edge Detection — real-time corner detection in the browse
 
 ## Why LDED
 
-Mobile document scanning requires fast and accurate detection of document boundaries. Classical computer vision approaches are fragile under varying lighting and backgrounds. Heavyweight deep learning models cannot run in real-time on end-user devices. LDED solves this by providing a neural network small enough to run entirely client-side via WebAssembly — no server roundtrip, no privacy concerns, no infrastructure cost.
+Mobile document scanning requires fast and accurate detection of document boundaries. Classical computer vision approaches are fragile under varying lighting conditions, cluttered backgrounds, and perspective distortion. At the same time, while both \(iOS\) and \(Android\) already ship with operating-system-level computer vision and machine learning capabilities for tasks such as edge or document detection, these native capabilities are generally not accessible from within the browser. Web applications therefore cannot rely on the optimized on-device models that native apps can use.
+
+This creates a clear gap: existing deep learning models for document boundary detection are typically too large or too computationally expensive to run in real time in a browser environment, especially on end-user mobile devices. In practice, there are currently no broadly available browser-first models that combine the necessary accuracy, speed, and device-level efficiency for this task.
+
+LDED addresses this gap by providing a neural network compact enough to run entirely client-side via WebAssembly. This enables real-time document boundary detection directly in the browser, without server roundtrips, without exposing sensitive images to external infrastructure, and without the operational cost of backend processing.
 
 ## Highlights
 
