@@ -21,7 +21,7 @@ lded/data/processed/
 lded/runs/
 lded/models/checkpoints/*.pt
 lded/models/checkpoints/*.pth
-lded/models/checkpoints/*.onnx
+lded/models/*.onnx
 
 # Scripts (local only, contains credentials)
 lded/data/scripts/download_datasets.py

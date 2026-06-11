@@ -73,16 +73,22 @@ def evaluate_onnx(
         latencies.append(latency)
 
         # Koordinaten extrahieren
-        coords = outputs[0][0]  # [4, 2] normalisiert
+        coords = outputs[0][0]  # [4, 2] normalisiert (im gepaddeten Raum)
 
-        # In Pixel-Koordinaten umrechnen
+        # Predictions: normalisiert → 512×512 Pixel (gleicher Raum wie Training)
         pred_corners = coords.copy()
-        pred_corners[:, 0] *= orig_w
-        pred_corners[:, 1] *= orig_h
+        pred_corners[:, 0] *= input_size[1]  # * 512
+        pred_corners[:, 1] *= input_size[0]  # * 512
+
+        # Targets: Original-normalisiert → gepaddeten Raum → 512×512 Pixel
+        # (gleiche Transformation wie im Dataset/Training)
+        pad = meta["pad"]
+        padded_w = orig_w + 2 * pad
+        padded_h = orig_h + 2 * pad
 
         target_px = target_corners.copy()
-        target_px[:, 0] *= orig_w
-        target_px[:, 1] *= orig_h
+        target_px[:, 0] = (target_corners[:, 0] * orig_w + pad) / padded_w * input_size[1]
+        target_px[:, 1] = (target_corners[:, 1] * orig_h + pad) / padded_h * input_size[0]
 
         all_pred_corners.append(pred_corners)
         all_target_corners.append(target_px)

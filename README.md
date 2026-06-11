@@ -63,6 +63,71 @@ Mobile document scanning requires fast and accurate detection of document bounda
 - ID card and passport boundary detection
 - Drop-in integration into existing web applications
 
+## Results
+
+<div align="center">
+<img src="lded/models/checkpoints/metrics_chart.png" alt="Model Metrics" width="700" />
+</div>
+
+<br/>
+
+### Benchmark (placeholder — will be updated with final model)
+
+| Metric | LDED (ours) | Target | SmartDoc Baseline |
+|--------|:-----------:|:------:|:-----------------:|
+| PCK@5 ↑ | 100.0 % | > 92 % | — |
+| PCK@10 ↑ | 100.0 % | > 97 % | — |
+| IoU ↑ | 98.3 % | > 90 % | — |
+| NME ↓ | 0.19 % | < 3.0 % | — |
+| Val Loss ↓ | 0.1157 | — | — |
+
+> *↑ = higher is better, ↓ = lower is better. Results on validation split. Baseline columns to be filled after final evaluation.*
+
+### Model Card
+
+| Property | Value |
+|----------|-------|
+| Architecture | MobileNetV3-Small + FPN-Lite + Heatmap Head |
+| Input size | 512 × 512 px |
+| Parameters | ~2.5 M |
+| Model size (FP32) | ~10 MB |
+| Model size (INT8) | < 5 MB |
+| Output | 4 corner points (x, y) + confidence |
+| Framework | PyTorch 2.x → ONNX |
+
+### Training Configuration
+
+| Setting | Value |
+|---------|-------|
+| Optimizer | AdamW |
+| Learning rate | 1e-3 (phase 1), 1e-4 (phase 2) |
+| Scheduler | CosineAnnealingLR |
+| Batch size | 16 |
+| Epochs | 50 (phase 1) + 30 (phase 2) |
+| Loss | Adaptive Wing + BCE + Coordinate |
+| AMP | Enabled (CUDA) |
+| Augmentation | Perspective, Brightness/Contrast, MotionBlur, JPEG, GaussNoise |
+
+### Datasets
+
+| Dataset | Raw Samples | × Augmentation | Effective Samples | Split |
+|---------|------------:|:--------------:|------------------:|-------|
+| DocCorner (HuggingFace) | ~4,000 | ×3 | ~12,000 | train / val / test |
+| MIDV-500/2020 (synthesized) | ~3,000 | ×3 | ~9,000 | train / val |
+| Mendeley Corner | ~1,100 | ×3 | ~3,300 | train / val |
+| **Total** | **~8,100** | | **~24,300** | — |
+
+### Inference
+
+| Runtime | Device | Latency |
+|---------|--------|---------|
+| ONNX Runtime Web (WASM) | Desktop browser | < 100 ms |
+| ONNX Runtime Web (WASM) | Mobile browser | < 150 ms |
+| PyTorch (CPU) | MacBook M1 | < 50 ms |
+| PyTorch (CUDA) | NVIDIA GPU | < 10 ms |
+
+> *Latency values are estimates — will be updated after final benchmarking.*
+
 ## Contents
 
 - [Architecture](lded/architecture.md)

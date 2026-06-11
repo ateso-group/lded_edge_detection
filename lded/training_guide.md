@@ -131,7 +131,7 @@ Das **Metriken-Diagramm** enthält zwei Teilgrafiken:
 
 ```bash
 python scripts/evaluate.py \
-    --model models/docaligner_lite.onnx \
+    --model models/lded.onnx \
     --data data/processed/test/ \
     --metrics pck nme iou latency
 ```
@@ -151,7 +151,7 @@ python scripts/evaluate.py \
 ```bash
 python scripts/export_onnx.py \
     --checkpoint models/checkpoints/best.pt \
-    --output models/docaligner_lite.onnx \
+    --output models/lded.onnx \
     --opset 17
 ```
 

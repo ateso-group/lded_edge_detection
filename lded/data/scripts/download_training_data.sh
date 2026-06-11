@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# DocAligner Lite — Dataset Download (Wrapper)
+# LDED — Dataset Download (Wrapper)
 # Delegiert an download_datasets.py, welches automatisch ein venv erstellt.
 # =============================================================================
 set -euo pipefail

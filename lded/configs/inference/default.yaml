@@ -1,4 +1,4 @@
-model_path: models/docaligner_lite.onnx
+model_path: models/lded.onnx
 input_size: [512, 512]
 padding_ratio: 0.05
 

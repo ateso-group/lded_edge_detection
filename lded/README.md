@@ -44,10 +44,10 @@ tensorboard --logdir runs/
 pkill -9 -f train.py
 
 # Evaluation
-python scripts/evaluate.py --model models/docaligner_lite.onnx --data data/processed/test/
+python scripts/evaluate.py --model models/lded.onnx --data data/processed/test/
 
 # ONNX Export
-python scripts/export_onnx.py --checkpoint models/best.pt --output models/docaligner_lite.onnx
+python scripts/export_onnx.py --checkpoint models/best.pt --output models/lded.onnx
 
 # Tests
 pytest tests/
@@ -65,6 +65,23 @@ lded/
 ├── web/              # Browser-Demo (ONNX Runtime Web)
 └── docs/             # Dokumentation
 ```
+
+## Web-Demo (Browser)
+
+Die ONNX-basierte Browser-Demo nutzt ONNX Runtime Web (WebGPU/WASM):
+
+```bash
+# Lokalen Server starten (aus lded/-Root, nötig wegen CORS)
+python -m http.server 8080
+```
+
+Dann im Browser öffnen: `http://localhost:8080/web/lded-demo.html`
+
+**Features:**
+- Bild-Upload oder Live-Kamera (Rückkamera bevorzugt)
+- Echtzeit-Dokumentenerkennung mit Polygon-Overlay
+- Anzeige von Eckpunkt-Koordinaten, Confidence und Latenz
+- Läuft komplett lokal im Browser (kein Server-Backend)
 
 ## Metriken (Zielwerte)
 

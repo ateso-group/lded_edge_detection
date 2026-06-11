@@ -18,7 +18,7 @@ def export_to_onnx(
     output_path: str,
     model_config: str = "configs/model/mobilenetv3.yaml",
     input_size: tuple[int, int] = (512, 512),
-    opset_version: int = 17,
+    opset_version: int = 18,
 ) -> None:
     """Exportiert LDED als ONNX-Modell.
 
@@ -49,6 +49,7 @@ def export_to_onnx(
             return coords, confidence
 
     export_model = LDEDExport(model)
+    export_model.eval()
 
     # ONNX Export
     output_dir = Path(output_path).parent
@@ -61,8 +62,8 @@ def export_to_onnx(
         opset_version=opset_version,
         input_names=["image"],
         output_names=["corners", "confidence"],
-        dynamic_axes={"image": {0: "batch"}},
         do_constant_folding=True,
+        dynamo=False,
     )
 
     # Validierung
@@ -90,12 +91,12 @@ def main():
         "--checkpoint", type=str, required=True, help="Pfad zum PyTorch-Checkpoint"
     )
     parser.add_argument(
-        "--output", type=str, default="models/docaligner_lite.onnx",
+        "--output", type=str, default="models/lded.onnx",
         help="Ausgabepfad für ONNX-Modell",
     )
     parser.add_argument("--model-config", type=str, default="configs/model/mobilenetv3.yaml")
     parser.add_argument("--input-size", type=int, nargs=2, default=[512, 512])
-    parser.add_argument("--opset", type=int, default=17)
+    parser.add_argument("--opset", type=int, default=18)
     args = parser.parse_args()
 
     export_to_onnx(
