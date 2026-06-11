@@ -74,20 +74,24 @@ Mobile document scanning requires fast and accurate detection of document bounda
 ## Results
 
 <div align="center">
-<img src="lded/models/checkpoints/metrics_chart.png" alt="Model Metrics" width="700" />
+
+| Training Curves (TensorBoard) | Evaluation Metrics |
+|:-----------------------------:|:------------------:|
+| <img src="lded/models/checkpoints/img.png" alt="Training Curves" width="480" /> | <img src="lded/models/checkpoints/metrics_chart.png" alt="Model Metrics" width="480" /> |
+
 </div>
 
 <br/>
 
-### Benchmark (placeholder — will be updated with final model)
+### Benchmark
 
 | Metric | LDED (ours) | Target | SmartDoc Baseline |
 |--------|:-----------:|:------:|:-----------------:|
-| PCK@5 ↑ | 100.0 % | > 92 % | — |
-| PCK@10 ↑ | 100.0 % | > 97 % | — |
-| IoU ↑ | 98.3 % | > 90 % | — |
-| NME ↓ | 0.19 % | < 3.0 % | — |
-| Val Loss ↓ | 0.1157 | — | — |
+| PCK@5 ↑ | 93.0 % | > 92 % | — |
+| PCK@10 ↑ | 98.2 % | > 97 % | — |
+| IoU ↑ | 97.4 % | > 90 % | — |
+| NME ↓ | 0.39 % | < 3.0 % | — |
+| Val Loss ↓ | 0.0026 | — | — |
 
 > *↑ = higher is better, ↓ = lower is better. Results on validation split. Baseline columns to be filled after final evaluation.*
 
@@ -129,12 +133,10 @@ Mobile document scanning requires fast and accurate detection of document bounda
 
 | Runtime | Device | Latency |
 |---------|--------|---------|
-| ONNX Runtime Web (WASM) | Desktop browser | < 100 ms |
-| ONNX Runtime Web (WASM) | Mobile browser | < 150 ms |
-| PyTorch (CPU) | MacBook M1 | < 50 ms |
-| PyTorch (CUDA) | NVIDIA GPU | < 10 ms |
-
-> *Latency values are estimates — will be updated after final benchmarking.*
+| ONNX Runtime Web (WebGPU) | Desktop browser | ~60 ms |
+| ONNX Runtime Web (WASM) | Desktop browser | ~500 ms |
+| ONNX Runtime Web (WebGPU) | iPhone (mobile) | ~237 ms |
+| ONNX Runtime Web (WASM) | iPhone (mobile) | ~500 ms |
 
 ## Contents
 
