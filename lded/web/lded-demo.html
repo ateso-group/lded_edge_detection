@@ -93,6 +93,7 @@
         .corner-label { color: #22d3ee; }
         .confidence-label { color: #a78bfa; }
         .latency-label { color: #fbbf24; }
+        .provider-label { color: #34d399; }
         .drop-zone {
             position: relative;
             transition: outline 0.2s, background 0.2s;
@@ -207,11 +208,16 @@
     </div>
 
     <script type="module">
-        import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/esm/ort.min.js';
+        // WebGPU-Bundle (enthält WebGPU + WASM-Backend). Das reine ort.min.js kann KEIN WebGPU.
+        import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/esm/ort.webgpu.min.js';
 
-        // WASM-Dateien vom CDN laden & Single-Thread (kein crossOriginIsolated nötig)
+        // WASM-Dateien vom CDN laden
         ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/';
-        ort.env.wasm.numThreads = 1;
+        // SIMD nutzen; Multi-Threading nur wenn crossOriginIsolated (COOP/COEP) verfügbar
+        ort.env.wasm.simd = true;
+        ort.env.wasm.numThreads = self.crossOriginIsolated
+            ? Math.min(4, navigator.hardwareConcurrency || 4)
+            : 1;
 
         const MEAN = [0.485, 0.456, 0.406];
         const STD = [0.229, 0.224, 0.225];
@@ -224,15 +230,46 @@
         let currentImage = null;
 
         // Modell laden
-        async function loadModel() {
+        let activeProvider = 'wasm';
+        // Modellpfade: zuerst direkt im selben Ordner, dann konfigurierte URI als Fallback
+        const MODEL_PATHS = ['./lded.onnx', '../models/lded.onnx'];
+
+        async function createSession(path) {
+            // WebGPU bevorzugen (GPU-beschleunigt), sonst WASM-Fallback
+            const providers = ('gpu' in navigator) ? ['webgpu', 'wasm'] : ['wasm'];
             try {
-                session = await ort.InferenceSession.create('../models/lded.onnx', {
+                const s = await ort.InferenceSession.create(path, {
+                    executionProviders: providers,
+                    graphOptimizationLevel: 'all',
+                });
+                activeProvider = providers[0];
+                return s;
+            } catch (gpuErr) {
+                // Fallback rein auf WASM, falls WebGPU-Init scheitert
+                const s = await ort.InferenceSession.create(path, {
                     executionProviders: ['wasm'],
                     graphOptimizationLevel: 'all',
                 });
-                document.getElementById('status').innerHTML = '✅ Modell geladen. Bild hochladen oder Kamera starten.';
-                document.getElementById('btnDetect').disabled = false;
-            } catch (e) {
+                activeProvider = 'wasm';
+                return s;
+            }
+        }
+
+        async function loadModel() {
+            let lastErr = null;
+            for (const path of MODEL_PATHS) {
+                try {
+                    session = await createSession(path);
+                    document.getElementById('status').innerHTML =
+                        `✅ Modell geladen (${activeProvider}) aus <code>${path}</code>. Bild hochladen oder Kamera starten.`;
+                    document.getElementById('btnDetect').disabled = false;
+                    return;
+                } catch (e) {
+                    lastErr = e;
+                }
+            }
+            {
+                const e = lastErr || new Error('Kein Modellpfad erreichbar');
                 document.getElementById('status').innerHTML =
                     `⚠️ Modell konnte nicht geladen werden.<br>` +
                     `Starte den Server aus dem <code>lded/</code>-Verzeichnis.<br>` +
@@ -250,31 +287,53 @@
             const paddedH = height + 2 * pad;
 
             // Float32 Array erstellen [1, 3, 512, 512]
-            const tensor = new Float32Array(1 * 3 * INPUT_SIZE * INPUT_SIZE);
+            const plane = INPUT_SIZE * INPUT_SIZE;
+            const tensor = new Float32Array(3 * plane);
 
             // Skalierungsfaktoren
             const scaleX = paddedW / INPUT_SIZE;
             const scaleY = paddedH / INPUT_SIZE;
 
+            // Vorberechnete Normalisierungsfaktoren: (v/255 - MEAN)/STD = v*invR - shift
+            const invR = 1 / (255 * STD[0]), invG = 1 / (255 * STD[1]), invB = 1 / (255 * STD[2]);
+            const shR = MEAN[0] / STD[0], shG = MEAN[1] / STD[1], shB = MEAN[2] / STD[2];
+            // Hintergrund (Padding) = (0 - MEAN)/STD
+            const bgR = -shR, bgG = -shG, bgB = -shB;
+
+            // Quell-Spalten einmal vorberechnen (statt pro Zeile)
+            const srcXs = new Int32Array(INPUT_SIZE);
+            for (let x = 0; x < INPUT_SIZE; x++) {
+                srcXs[x] = ((x * scaleX + 0.5) | 0) - pad;
+            }
+
+            const rOff = 0, gOff = plane, bOff = 2 * plane;
             for (let y = 0; y < INPUT_SIZE; y++) {
-                for (let x = 0; x < INPUT_SIZE; x++) {
-                    // Quell-Pixel im gepadeten Bild
-                    const srcX = Math.round(x * scaleX) - pad;
-                    const srcY = Math.round(y * scaleY) - pad;
-
-                    let r = 0, g = 0, b = 0;
-                    if (srcX >= 0 && srcX < width && srcY >= 0 && srcY < height) {
-                        const idx = (srcY * width + srcX) * 4;
-                        r = data[idx] / 255.0;
-                        g = data[idx + 1] / 255.0;
-                        b = data[idx + 2] / 255.0;
+                const srcY = ((y * scaleY + 0.5) | 0) - pad;
+                const rowBase = y * INPUT_SIZE;
+                if (srcY < 0 || srcY >= height) {
+                    // Ganze Zeile ist Padding
+                    for (let x = 0; x < INPUT_SIZE; x++) {
+                        const p = rowBase + x;
+                        tensor[rOff + p] = bgR;
+                        tensor[gOff + p] = bgG;
+                        tensor[bOff + p] = bgB;
                     }
-
-                    // ImageNet-Normalisierung
-                    const pixelIdx = y * INPUT_SIZE + x;
-                    tensor[0 * INPUT_SIZE * INPUT_SIZE + pixelIdx] = (r - MEAN[0]) / STD[0];
-                    tensor[1 * INPUT_SIZE * INPUT_SIZE + pixelIdx] = (g - MEAN[1]) / STD[1];
-                    tensor[2 * INPUT_SIZE * INPUT_SIZE + pixelIdx] = (b - MEAN[2]) / STD[2];
+                    continue;
+                }
+                const srcRow = srcY * width;
+                for (let x = 0; x < INPUT_SIZE; x++) {
+                    const srcX = srcXs[x];
+                    const p = rowBase + x;
+                    if (srcX < 0 || srcX >= width) {
+                        tensor[rOff + p] = bgR;
+                        tensor[gOff + p] = bgG;
+                        tensor[bOff + p] = bgB;
+                    } else {
+                        const idx = (srcRow + srcX) << 2;
+                        tensor[rOff + p] = data[idx] * invR - shR;
+                        tensor[gOff + p] = data[idx + 1] * invG - shG;
+                        tensor[bOff + p] = data[idx + 2] * invB - shB;
+                    }
                 }
             }
 
@@ -335,7 +394,8 @@
                     `<span class="corner-label">${CORNER_NAMES[i]}</span>: (${c.x.toFixed(1)}, ${c.y.toFixed(1)})`
                 ).join(' · ') +
                 `<br><span class="confidence-label">Confidence:</span> ${conf}` +
-                ` · <span class="latency-label">Latenz:</span> ${latency.toFixed(1)} ms`;
+                ` · <span class="latency-label">Latenz:</span> ${latency.toFixed(1)} ms` +
+                ` · <span class="provider-label">Verarbeitung:</span> ${activeProvider.toUpperCase()}`;
         }
 
         // Detektion ausführen
@@ -355,7 +415,9 @@
             const tmp = document.createElement('canvas');
             tmp.width = inferW;
             tmp.height = inferH;
-            const tmpCtx = tmp.getContext('2d');
+            const tmpCtx = tmp.getContext('2d', { willReadFrequently: true });
+
+            const t0 = performance.now();
             tmpCtx.drawImage(inputCanvas, 0, 0, inferW, inferH);
             const imageData = tmpCtx.getImageData(0, 0, inferW, inferH);
 
@@ -365,7 +427,6 @@
                 data: imageData.data,
             });
 
-            const t0 = performance.now();
             const results = await session.run({ image: tensor });
             const latency = performance.now() - t0;
 
@@ -392,6 +453,7 @@
             videoEl.style.display = 'none';
             document.getElementById('inputCanvas').style.display = 'block';
             lastCorners = null;
+            displayCorners = null;
         }
 
         // Bild aus File-Objekt laden
@@ -443,7 +505,14 @@
 
         // Kamera starten
         let cameraRunning = false;
-        let lastCorners = null;
+        let lastCorners = null;        // Ziel-Ecken (letzte Detektion)
+        let displayCorners = null;     // geglättete, angezeigte Ecken (interpoliert)
+        // Glättungsfaktor pro Frame (0..1): kleiner = weicher/träger, größer = direkter
+        const SMOOTHING = 0.15;
+        // Wenn der Sprung zu groß ist (Szenenwechsel), sofort umschalten statt langsam gleiten
+        const SNAP_DISTANCE = 200;
+
+        function lerp(a, b, t) { return a + (b - a) * t; }
 
         function isLiveEnabled() {
             return document.getElementById('liveToggle').checked;
@@ -531,21 +600,40 @@
                 const inferH = Math.round(vh * inferScale);
                 inputCanvas.width = inferW;
                 inputCanvas.height = inferH;
-                const inputCtx = inputCanvas.getContext('2d');
+                const inputCtx = inputCanvas.getContext('2d', { willReadFrequently: true });
                 const overlayCtx = overlayCanvas.getContext('2d');
 
                 cameraRunning = true;
                 let detecting = false;
 
-                // Overlay-Loop: zeichnet nur Linien (leichtgewichtig, flüssig)
+                // Overlay-Loop: interpoliert geglättet zu den Ziel-Ecken (flüssige Übergänge)
                 function drawOverlayFrame() {
                     if (!cameraRunning) return;
                     overlayCtx.clearRect(0, 0, vw, vh);
+
                     if (lastCorners) {
+                        if (!displayCorners) {
+                            // Erste Detektion: direkt übernehmen (kein Gleiten aus dem Nichts)
+                            displayCorners = lastCorners.map(c => ({ x: c.x, y: c.y }));
+                        } else {
+                            // Pro Ecke sanft Richtung Ziel gleiten; bei großem Sprung snappen
+                            for (let i = 0; i < 4; i++) {
+                                const dx = lastCorners[i].x - displayCorners[i].x;
+                                const dy = lastCorners[i].y - displayCorners[i].y;
+                                if (Math.hypot(dx, dy) > SNAP_DISTANCE) {
+                                    displayCorners[i].x = lastCorners[i].x;
+                                    displayCorners[i].y = lastCorners[i].y;
+                                } else {
+                                    displayCorners[i].x = lerp(displayCorners[i].x, lastCorners[i].x, SMOOTHING);
+                                    displayCorners[i].y = lerp(displayCorners[i].y, lastCorners[i].y, SMOOTHING);
+                                }
+                            }
+                        }
+
                         overlayCtx.beginPath();
-                        overlayCtx.moveTo(lastCorners[0].x, lastCorners[0].y);
+                        overlayCtx.moveTo(displayCorners[0].x, displayCorners[0].y);
                         for (let i = 1; i < 4; i++) {
-                            overlayCtx.lineTo(lastCorners[i].x, lastCorners[i].y);
+                            overlayCtx.lineTo(displayCorners[i].x, displayCorners[i].y);
                         }
                         overlayCtx.closePath();
                         overlayCtx.strokeStyle = '#22d3ee';
@@ -553,12 +641,14 @@
                         overlayCtx.stroke();
                         overlayCtx.fillStyle = 'rgba(34, 211, 238, 0.08)';
                         overlayCtx.fill();
-                        lastCorners.forEach((corner, i) => {
+                        displayCorners.forEach((corner, i) => {
                             overlayCtx.beginPath();
                             overlayCtx.arc(corner.x, corner.y, 12, 0, 2 * Math.PI);
                             overlayCtx.fillStyle = CORNER_COLORS[i];
                             overlayCtx.fill();
                         });
+                    } else {
+                        displayCorners = null;
                     }
                     requestAnimationFrame(drawOverlayFrame);
                 }
@@ -598,7 +688,8 @@
                         const fps = (1000 / latency).toFixed(0);
                         document.getElementById('status').innerHTML =
                             `📷 Live · <span class="confidence-label">Confidence:</span> ${conf}` +
-                            ` · <span class="latency-label">${latency.toFixed(0)} ms (${fps} fps)</span>`;
+                            ` · <span class="latency-label">${latency.toFixed(0)} ms (${fps} fps)</span>` +
+                            ` · <span class="provider-label">${activeProvider.toUpperCase()}</span>`;
                     } catch (e) { /* skip frame */ }
                     detecting = false;
                     setTimeout(detectLoop, 50);
