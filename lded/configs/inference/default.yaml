@@ -1,0 +1,13 @@
+model_path: models/docaligner_lite.onnx
+input_size: [512, 512]
+padding_ratio: 0.05
+
+normalize:
+  mean: [0.485, 0.456, 0.406]
+  std: [0.229, 0.224, 0.225]
+
+confidence_threshold: 0.5
+
+onnx:
+  opset_version: 17
+  execution_providers: ["CPUExecutionProvider"]

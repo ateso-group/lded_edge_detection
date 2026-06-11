@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lded"
+version = "0.1.0"
+description = "Lightweight Document Edge Detector — MobileNetV3 + Heatmap-Head + Soft-Argmax"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Raphael Fuchs" }]
+
+dependencies = [
+    "torch>=2.1.0",
+    "torchvision>=0.16.0",
+    "timm>=0.9.12",
+    "onnx>=1.15.0",
+    "onnxruntime>=1.17.0",
+    "opencv-python>=4.9.0",
+    "albumentations>=1.3.1",
+    "numpy>=1.26.0",
+    "Pillow>=10.0.0",
+    "PyYAML>=6.0.1",
+    "tqdm>=4.66.0",
+    "matplotlib>=3.8.0",
+    "scikit-learn>=1.3.0",
+    "shapely>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["model*", "scripts*", "configs*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

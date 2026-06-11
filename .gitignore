@@ -1,0 +1,27 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.venv-download/
+
+# IDE
+.idea/
+
+# Data (too large for git)
+lded/data/raw/
+lded/data/processed/
+!lded/data/raw/.gitkeep
+!lded/data/processed/.gitkeep
+
+# Training artifacts
+lded/runs/
+lded/models/checkpoints/*.pt
+lded/models/checkpoints/*.pth
+lded/models/checkpoints/*.onnx
+
+#other
+learn

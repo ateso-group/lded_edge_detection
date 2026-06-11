@@ -1,0 +1,54 @@
+model_config: configs/model/mobilenetv3.yaml
+
+input_size: [512, 512]
+batch_size: 32
+num_workers: 0
+epochs: 100
+
+optimizer:
+  name: AdamW
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+
+lr_schedule:
+  name: CosineAnnealingLR
+  T_max: 100
+  eta_min: 1.0e-6
+
+warmup:
+  epochs: 5
+  start_lr: 1.0e-6
+
+loss:
+  # Koordinaten-Loss ist Primary, AWing + BCE nur Auxiliary
+  coord_weight: 1.0
+  awing_weight: 0.3
+  bce_weight: 0.05
+
+phases:
+  # Phase 1: Backbone einfrieren (Epochs 1–10)
+  freeze_backbone_until_epoch: 10
+  # Phase 2: Full Fine-Tuning (Epochs 11–80) — differentielles LR
+  backbone_lr_factor: 0.333   # Backbone: ~1e-4 wenn Rest 3e-4
+  # Phase 3: QAT (Epochs 81–100)
+  qat_start_epoch: 81
+
+# Hinweis: Die Online-Augmentation ist in model/data/augmentation.py definiert
+# (get_train_transforms) und wird NICHT aus dieser Config gelesen. Strategie:
+# saubere Originale + milde Offline-Synthese, Hauptdiversität on-the-fly.
+# Kein HorizontalFlip (feste Eckenreihenfolge TL,TR,BR,BL).
+
+data:
+  train_dir: data/processed/train
+  val_dir: data/processed/val
+  test_dir: data/processed/test
+  padding_ratio: 0.05
+
+checkpoint:
+  save_dir: models/checkpoints
+  save_best: true
+  monitor: val_pck5
+
+logging:
+  log_dir: runs/
+  log_interval: 50   # Steps

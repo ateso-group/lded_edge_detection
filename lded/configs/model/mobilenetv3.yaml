@@ -1,0 +1,21 @@
+backbone:
+  name: mobilenetv3_small
+  pretrained: true
+  # Feature-Map Taps (timm layer indices)
+  out_indices: [1, 2, 4]   # C3 (1/4), C4 (1/8), C5 (1/32)
+  channels: [24, 40, 96]   # Kanal-Anzahl pro Stage
+
+neck:
+  name: fpn_lite
+  in_channels: [24, 40, 96]
+  out_channels: 128
+  num_outs: 1               # Einzelne fusionierte Feature-Map
+  use_depthwise: true
+
+head:
+  name: heatmap_head
+  in_channels: 128
+  num_corners: 4            # TL, TR, BR, BL
+  num_classes: 1            # Confidence-Kanal (Dokument vorhanden?)
+  heatmap_size: [256, 256]  # Ausgabe-Auflösung der Heatmap
+  temperature: 0.05         # Soft-Argmax-Schärfe (klein = präzisere Koordinaten)
