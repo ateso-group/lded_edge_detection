@@ -110,6 +110,8 @@ def train_one_epoch(
     device: torch.device,
     epoch: int,
     log_interval: int = 50,
+    use_amp: bool = False,
+    scaler: torch.amp.GradScaler | None = None,
 ) -> dict[str, float]:
     """Trainiert eine Epoche."""
     model.train()
@@ -126,18 +128,21 @@ def train_one_epoch(
 
         target_corners = batch["corners"].to(device)
 
-        # Forward
-        pred_heatmaps, pred_coords, pred_confidence = model(images)
-        losses = criterion(
-            pred_heatmaps, target_heatmaps, pred_confidence, target_confidence,
-            pred_coords=pred_coords, target_coords=target_corners,
-        )
+        # Forward (AMP: FP16 auf CUDA, No-Op sonst)
+        with torch.amp.autocast(device.type, enabled=use_amp):
+            pred_heatmaps, pred_coords, pred_confidence = model(images)
+            losses = criterion(
+                pred_heatmaps, target_heatmaps, pred_confidence, target_confidence,
+                pred_coords=pred_coords, target_coords=target_corners,
+            )
 
         # Backward
         optimizer.zero_grad()
-        losses["total"].backward()
+        scaler.scale(losses["total"]).backward()
+        scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
-        optimizer.step()
+        scaler.step(optimizer)
+        scaler.update()
 
         total_loss += losses["total"].item()
         total_awing += losses["awing"].item()
@@ -306,6 +311,12 @@ def main():
     # TensorBoard-Writer für Live-Visualisierung des Trainingsverlaufs
     writer = SummaryWriter(log_dir=cfg["logging"]["log_dir"])
 
+    # AMP: Automatisch aktivieren bei CUDA (No-Op bei CPU/MPS)
+    use_amp = (device.type == "cuda")
+    scaler = torch.amp.GradScaler(device.type, enabled=use_amp)
+    if use_amp:
+        print("AMP (Mixed Precision): aktiviert")
+
     best_pck5 = 0.0
     phases = cfg["phases"]
 
@@ -360,6 +371,8 @@ def main():
         train_metrics = train_one_epoch(
             model, train_loader, criterion, optimizer, device, epoch,
             log_interval=cfg["logging"]["log_interval"],
+            use_amp=use_amp,
+            scaler=scaler,
         )
 
         # Validierung

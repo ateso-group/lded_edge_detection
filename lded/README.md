@@ -27,8 +27,14 @@ source .venv/bin/activate
 # Installation
 pip install -e ".[dev]"
 
-# Daten herunterladen
-bash data/scripts/download_training_data.sh
+# Daten herunterladen (alle Datensätze)
+python data/scripts/download_datasets.py
+
+# Nur bestimmte Datensätze herunterladen
+python data/scripts/download_datasets.py --datasets huggingface
+
+# Verfügbare Datensätze auflisten
+python data/scripts/download_datasets.py --list
 
 # Training
 python scripts/train.py --config configs/train/default.yaml --max_samples 50

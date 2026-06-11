@@ -18,10 +18,22 @@ pip install -e ".[dev]"
 ### 1. Rohdaten herunterladen
 
 ```bash
-bash data/scripts/download_training_data.sh [data/raw]
+# Alle Datensätze herunterladen
+python data/scripts/download_datasets.py
+
+# Nur bestimmte Datensätze herunterladen
+python data/scripts/download_datasets.py --datasets huggingface midv500 midv2020
+
+# Verfügbare Datensätze auflisten
+python data/scripts/download_datasets.py --list
+
+# Benutzerdefiniertes Zielverzeichnis
+python data/scripts/download_datasets.py --data-root data/raw
 ```
 
-Lädt MIDV-2020 und DocCorner-Datasets nach `data/raw/`.
+Verfügbare Datensätze: `huggingface`, `midv500`, `midv2020`, `smartdoc2015`, `mendeley`.
+
+Lädt die Datensätze nach `data/raw/`.
 
 ### 2. Synthetische Augmentation
 
@@ -72,7 +84,7 @@ python scripts/train.py --config configs/train/default.yaml
 **Beispiel: Schneller Debug-Lauf mit 50 Bildern:**
 
 ```bash
-python scripts/train.py --config configs/train/default.yaml --max_samples 50 --device mps
+python scripts/train.py --config configs/train/default.yaml --max_samples 500 --device mps
 
 # Overfit-Test mit 5 Samples (default)
 python scripts/train.py --overfit_test --device mps
