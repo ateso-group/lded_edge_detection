@@ -55,11 +55,11 @@ def get_train_transforms(input_size: tuple[int, int] = (512, 512)) -> A.Compose:
             # blur_limit = Stärke der Unschärfe in Pixeln.
             A.MotionBlur(blur_limit=(3, 7), p=0.3),
             # ImageCompression: Simuliert JPEG-Kompressionsartefakte (niedrige Bildqualität).
-            # quality_lower/upper = Bereich der simulierten JPEG-Qualität (0–100).
-            A.ImageCompression(quality_lower=50, quality_upper=95, p=0.3),
+            # quality_range = Bereich der simulierten JPEG-Qualität (0–100).
+            A.ImageCompression(quality_range=(50, 95), p=0.3),
             # GaussNoise: Fügt zufälliges Bildrauschen hinzu (körniger Look).
-            # var_limit = Varianz-Bereich des Rauschens.
-            A.GaussNoise(var_limit=(5.0, 25.0), p=0.2),
+            # std_range = Bereich der Standardabweichung des Rauschens (normalisiert auf [0, 1]).
+            A.GaussNoise(std_range=(0.01, 0.05), p=0.2),
             # Resize: Skaliert das Bild auf die feste Eingangsgröße des Modells.
             A.Resize(height=input_size[0], width=input_size[1]),
         ],
